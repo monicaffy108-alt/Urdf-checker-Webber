@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 设计参考图：第三方产品页的截图，不放进仓库
+参考.png

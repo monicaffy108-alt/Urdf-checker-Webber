@@ -1,0 +1,2 @@
+# 统一用 LF，Windows 和 WSL 之间来回改也不会出现整个文件都变了的 diff
+* text=auto eol=lf
