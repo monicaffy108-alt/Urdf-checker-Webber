@@ -12,15 +12,7 @@ A pure-frontend web tool that **runs 6 automated checks on a URDF file in your b
 
 Builds to a **single self-contained `dist/index.html`** — open it in Chrome or Edge, no install, no server, no accounts.
 
----
-
-## Why This Exists
-
-Building a dexterous hand URDF is a 20+ degree-of-freedom puzzle. A single misplaced `parent` / `child`, a forgotten mesh path, or a naming drift between what the hardware calls it and what the URDF calls it — and your whole simulation dies 30 seconds in.
-
-Before this tool we checked by hand, scrolling through VS Code, taking screenshots, and arguing in WeChat. That doesn't scale, it's inconsistent, and it misses things.
-
-Now you **pick a folder, wait ~1 second, and see exactly where every error is — with a click that jumps straight to the offending line**.
+![Landing page — pick a folder, get 6 checks instantly](./assets/welcome.png)
 
 ---
 
@@ -41,14 +33,27 @@ Checks run in order — if #1 fails, #2–6 auto-skip with a clear reason. Any c
 
 ## Features
 
-![URDF Checker — results view with verdict, hand map, and issues](./assets/demo-results.png)
+**Big verdict + visual hand map** — instant overview of how bad it is and where:
+
+![Stage + hand map — error count, link/joint/mesh stats, colored link graph](./assets/stage-handmap.png)
+
+**6-item check grid** — every check at a glance, darkest block = heaviest problem:
+
+![Bento grid — 6 checks, darkest block marks the worst one](./assets/bento-grid.png)
+
+**Issue list grouped by check** — click any item, right-side drawer slides in with the offending XML line highlighted:
+
+![Issue list — grouped by check, each issue shows line number and target](./assets/issue-list.png)
+
+**Graceful degradation** — when XML itself breaks, #2–6 clearly show "skipped" with the reason (fix #1 first):
+
+![Broken XML — checks 2–6 auto-skip, user is told why](./assets/broken-xml.png)
 
 - **Zero backend, zero upload** — all parsing, analysis, and rendering happens in your browser with `saxes`. Your URDF and meshes never leave your machine.
 - **Single-file deliverable** — `npm run build` bundles everything (fonts, icons, CSS, JS) into one `dist/index.html`. Share it on WeChat, Slack, or email. Double-click to open.
 - **Visual hand map** — your dexterous hand drawn from link positions. Green = ok, yellow = warning, red = error, dashed red circle = missing node. Hover for a tooltip, click to filter.
 - **Jump-to-source drawer** — click any issue, a right-side panel slides in with syntax-highlighted XML, the problem line marked red/yellow, and auto-scrolled into view. Press `Esc` to close.
-- **Naming convention editor** — change the standard any time from the top bar. Your config is persisted in `localStorage`.
-- **Markdown report export** — one click downloads a `report.md` you can paste into an MR comment, a Jira ticket, or send to a teammate.
+- **Markdown report export** — one click downloads `urdf-check-report.md` with overview table, per-file breakdowns, severity badges, line numbers, and fix hints.
 - **27 unit tests** covering all 6 checks, XML parsing, line numbers, file reading, hand layout, and issue filtering.
 
 ---
