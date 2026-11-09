@@ -1,68 +1,172 @@
-# URDF 检查工具
+# URDF Checker Webber
 
-LinkerBot 灵心巧手 · 灵巧手 URDF 自动化检查网页。**纯前端**：6 项检查都在浏览器里运行，文件不会上传，没有后端，也没有数据库。
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-4-6E9F18?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Single File](https://img.shields.io/badge/Build-Single%20HTML-3498DB?style=flat-square&logo=html5&logoColor=white)]()
+[![Zero Backend](https://img.shields.io/badge/Backend-None%20%28Pure%20Frontend%29-27AE60?style=flat-square)]()
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](./LICENSE)
 
-## 使用
+A pure-frontend web tool that **runs 6 automated checks on a URDF file in your browser, never uploading anything**. Designed for robotics engineers building dexterous hands — catch naming mismatches, broken parent/child links, missing meshes, and more **before** the simulation explodes.
 
-1. 运行 `npm install` 和 `npm run build`，得到 `dist/index.html`。它是单个文件，字体和图标都已内嵌，不需要 Node，可以直接发给同事，双击就能用（Chrome / Edge）。
-2. 点“选择文件夹”，选中 URDF 所在的文件夹。meshes 要一起选，第 6 项才有东西可查。
-3. 顶栏有：文件下拉（切换文件夹里的 URDF）、选择文件夹、规则（改命名标准、limit 正负、axis 方向）、导出报告（Markdown）。
-4. 想先看效果：落地页点“加载示例”。里面有三份文件：每项检查都埋了错的、合规的、XML 本身就坏了的。
+Builds to a **single self-contained `dist/index.html`** — open it in Chrome or Edge, no install, no server, no accounts.
 
-拖放文件夹只在 `npm run preview` 打开的网址下可用。双击打开的页面（`file://`）里，浏览器不允许读取拖进来的文件夹，只能点按钮选。
+---
 
-## 界面
+## Why This Exists
 
-- **首屏**：一整块灰色圆角舞台。左上是淡淡的水印（机器人名字），中间是一个大数字（错误数；没有错误时是警告数），三张小卡片是 link / joint / mesh 引用的数量，右边是手形结构图。
-- **手形结构图**：按命名标准画出的灵巧手，每个节点是标准里的一行。实心绿点是正常，实心黄点是有警告，实心红点是有错误，红色虚线圈是缺失，灰色虚线圈是可选。鼠标移到节点上浮出玻璃小卡片；点击节点，下面的问题只留下和它有关的，再点一次取消。
-- **便当格**：6 项检查各一格，格里最大的数字是问题数，问题最重的一格是近黑色。点一格只看这一项。
-- **问题列表**：每项默认只显示 3 条，没有卡片边框。点一条，右侧抽屉滑出，源码跳到出错的那一行。
-- **抽屉**：源码（语法高亮，有问题的行在行号旁标红或标黄）和命名对照表。键盘焦点锁在抽屉里，Esc 关闭。
-- 状态不只靠颜色：圆点有实心、空心、虚线之分，旁边都有文字。系统设置了“减少动效”时，背景和圆点的缓慢动画都会停。
+Building a dexterous hand URDF is a 20+ degree-of-freedom puzzle. A single misplaced `parent` / `child`, a forgotten mesh path, or a naming drift between what the hardware calls it and what the URDF calls it — and your whole simulation dies 30 seconds in.
 
-## 6 项检查
+Before this tool we checked by hand, scrolling through VS Code, taking screenshots, and arguing in WeChat. That doesn't scale, it's inconsistent, and it misses things.
 
-| # | 检查 | 代码 |
-|---|---|---|
-| 1 | 格式完整性 | `src/core/checks/syntax.ts` |
-| 2 | parent / child | `src/core/checks/reference.ts` |
-| 3 | 命名规范 | `src/core/checks/naming.ts` |
-| 4 | limit 上下限 | `src/core/checks/limit.ts` |
-| 5 | axis 转轴（运动学参数） | `src/core/checks/axis.ts` |
-| 6 | mesh 文件（运动学参数） | `src/core/checks/mesh.ts` |
+Now you **pick a folder, wait ~1 second, and see exactly where every error is — with a click that jumps straight to the offending line**.
 
-## 规则放在哪
+---
 
-- 命名标准：`src/core/config.ts` 里的 `defaultEntries()`。也可以在页面“规则”里改，改完存在这个浏览器里（`localStorage`，这是唯一的存储）。
-- 第 4 项的正负规则（`limit.signRules`）和第 5 项的方向规则（`axis.rules`）默认没有启用。页面上这两项显示“待配置”，顶部结论会写“没有完整检查”，不会假装通过。拿到判定标准后，把规则写进默认配置并启用即可。
+## What It Checks
 
-## 代码结构
+| # | Check | What It Catches |
+|---|-------|----------------|
+| 1 | **Syntax Completeness** | Broken XML, missing required fields (`robot` / `link` / `joint`), duplicate names |
+| 2 | **Parent / Child Reference** | Links that don't exist, joints that reference each other wrong, whether the tree actually closes |
+| 3 | **Naming Convention** | Link and joint names that drift from the unified standard stored in `config.ts` |
+| 4 | **Joint Limit Bounds** | `lower` > `upper`, default values never touched, sign violations (rules configurable) |
+| 5 | **Joint Axis** | Missing axis, zero vectors, wrong direction (rules configurable) |
+| 6 | **Mesh Files** | `visual` / `collision` references that point to files not found in your meshes folder |
 
-- `src/core/`：6 项检查和 XML 解析，纯函数，不依赖浏览器，可以直接在 Node 里跑（以后做命令行版、接 CI 都用得上）。
-- `src/components/`：界面。
-- `src/io/`：读取文件夹、下载。
-- `src/samples/demo.ts`：示例数据。
-- `tests/`：单元测试。
+Checks run in order — if #1 fails, #2–6 auto-skip with a clear reason. Any check that itself crashes shows an `error` flag with the message **"This is a bug in the tool — send this URDF to the developer"** so you know it's not your file.
 
-## 改样式
+---
 
-- 颜色、圆角、间距都是 `src/styles.css` 开头的变量，组件里不写死。
-- 间距只用 8 / 16 / 24 / 40 / 64 / 120 / 160 这一套（`--s1` 到 `--s7`）。卡片之间固定 12px（`--gap`），区块之间 120px（`--s6`），相差 10 倍，大留白就来自这个比例。字号只用 12 / 14 / 20 / 32 / 56。
-- 文字颜色按 WCAG 对比度 4.5:1 选的，改之前先算一下。状态色只用在小圆点和文字上。
-- 玻璃（半透明加背景模糊）只用在会浮起来的东西上：顶栏、下拉、抽屉、弹窗、悬停卡片。浏览器不支持背景模糊时，自动退回几乎不透明的白底。
-- 手形图的布局在 `src/core/handLayout.ts`（纯函数，有单元测试）。
-- 现在只有浅色主题，深色主题以后再补。
+## Features
 
-## 开发
+- **Zero backend, zero upload** — all parsing, analysis, and rendering happens in your browser with `saxes`. Your URDF and meshes never leave your machine.
+- **Single-file deliverable** — `npm run build` bundles everything (fonts, icons, CSS, JS) into one `dist/index.html`. Share it on WeChat, Slack, or email. Double-click to open.
+- **Visual hand map** — your dexterous hand drawn from link positions. Green = ok, yellow = warning, red = error, dashed red circle = missing node. Hover for a tooltip, click to filter.
+- **Jump-to-source drawer** — click any issue, a right-side panel slides in with syntax-highlighted XML, the problem line marked red/yellow, and auto-scrolled into view. Press `Esc` to close.
+- **Naming convention editor** — change the standard any time from the top bar. Your config is persisted in `localStorage`.
+- **Markdown report export** — one click downloads a `report.md` you can paste into an MR comment, a Jira ticket, or send to a teammate.
+- **27 unit tests** covering all 6 checks, XML parsing, line numbers, file reading, hand layout, and issue filtering.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+
+- npm (`.npmrc` already enables `legacy-peer-deps` — don't remove it)
+
+### Install & Run
 
 ```bash
-npm install        # .npmrc 已开 legacy-peer-deps，不要去掉
-npm run dev        # 开发服务器
-npm run build      # 类型检查 + 打包成 dist/index.html
-npm test           # 单元测试
-npm run preview    # 预览打包结果（支持拖放文件夹）
+npm install
+npm run dev        # local dev server at http://localhost:5173
+npm run preview    # preview production build (folder drag-drop works here)
+npm run build      # type-check + bundle → dist/index.html
+npm test           # run unit tests with Vitest
 ```
 
-## 测试
+### Usage
 
-`npm test` 跑单元测试：6 项检查、XML 解析和行号、读取文件夹、手形图布局、问题筛选。浏览器里的交互（点击、键盘、拖放、手机宽度）是在本地用真实 Chrome 手动脚本测的，脚本依赖本机的浏览器配置，没有放进仓库。
+1. Open the app (either `npm run preview` for drag-drop support, or double-click `dist/index.html` for file-picker-only).
+2. Click **Select Folder** and pick the directory containing your `.urdf` files (include the `meshes/` folder for check #6).
+3. Results appear instantly — errors on top, warnings below, the visual hand map, and issue list.
+4. Click any issue → the drawer opens on the right with the offending line highlighted.
+5. Click **Rules** in the top bar to customize the naming convention, limit sign rules, and axis direction rules.
+6. Click **Export Report** to download a Markdown summary.
+
+> **Note on `file://` protocol:** when you double-click `dist/index.html`, your browser blocks drag-drop of folders for security. Clicking the **Select Folder** button still works. Drag-drop is only available when served over HTTP (i.e. via `npm run preview`).
+
+---
+
+## Project Structure
+
+```
+src/
+├── core/                 # Pure functions. No browser dependency. Run in Node too.
+│   ├── checks/           # The 6 check implementations (syntax, reference, naming, limit, axis, mesh)
+│   ├── config.ts         # Default config (naming convention entries, sign rules, axis rules)
+│   ├── urdf.ts           # Builds a typed model from parsed XML
+│   ├── xml.ts            # XML parsing + text normalization + line number mapping
+│   ├── run.ts            # Orchestrates all checks in order
+│   ├── summary.ts        # Aggregate verdict, headline, per-check score
+│   ├── handLayout.ts     # Pure-function layout for the visual hand map
+│   ├── types.ts          # CheckId, CheckResult, Issue, Status enums
+│   └── ...
+├── components/           # React UI components
+│   ├── Header.tsx        # Top bar (file picker, rules, export)
+│   ├── Stage.tsx         # Hero stage with the big verdict number
+│   ├── HandMap.tsx       # Visual hand map
+│   ├── Bento.tsx         # The 6-check bento grid
+│   ├── IssueList.tsx     # Scrollable list of issues
+│   ├── SourceView.tsx    # Right-side drawer: highlighted XML + naming table
+│   ├── ConfigDialog.tsx  # Rules dialog
+│   └── ...
+├── io/                   # File reading + download (browser-only)
+├── samples/demo.ts       # Sample data for the "Load Demo" button
+├── main.tsx              # Vite entry
+└── styles.css            # Design tokens (spacing, radius, typography, state colors)
+```
+
+`tests/` mirrors `src/core/` — unit tests for every check, XML parsing, file reading, hand layout, and issue filtering.
+
+---
+
+## Design System
+
+All styling uses centralized CSS variables in `src/styles.css` so components never hardcode pixels or hex values.
+
+| Token | Values |
+|-------|--------|
+| **Spacing** | `8 / 16 / 24 / 40 / 64 / 120 / 160` (`--s1`…`--s7`). Block-to-block gap is fixed at `120px` for heavy whitespace. |
+| **Font sizes** | `12 / 14 / 20 / 32 / 56` |
+| **Radii** | `8 / 12 / 16 / 24` |
+| **State colors** | Only on status dots and labels — never large color blocks. WCAG 4.5:1 contrast ratio. |
+| **Glass effect** | Only on floating elements (top bar, dropdowns, drawer, dialogs, hover cards). Automatically falls back to nearly-opaque white when `backdrop-filter` isn't supported. |
+
+---
+
+## Roadmap
+
+### v0.1 — ✅ Delivered
+- 6 checks, 27 unit tests, single-file build, Markdown report, naming convention editor.
+
+### v0.2 — UI Polish + Engine Extensibility (Pending Approval)
+| Priority | Item | Source |
+|----------|------|--------|
+| P1-UI | Persistent file-status bar in top bar (never disappears) | Product Owner |
+| P1-UI | Collapsed statistics cards with "URDF Structure" title | Product Owner |
+| P1-UI | Dynamic hand map layout for arbitrary DOF counts | Product Owner |
+| P1-UI | Root node simplified to `hand_base_link` only (no wrist) | Product Owner |
+| P1-UI | Error count badges per link node + double-click → jump to issues | Product Owner |
+| P1-UI | Bento grid → extensible label + dropdown list (supports N checks) | Product Owner |
+| P1-UI | Merge regions 2 × 3 into one unified expandable list | Product Owner |
+| P1-Engine | Plugin-style check architecture (so symmetry check + future additions need zero framework changes) | Product Owner |
+| P1-Engine | Symmetry check plugin (integrates with existing mirror script) | Product Owner |
+| P1-Engine | Enable limit sign rules + axis direction rules (currently `partial`) | Blocked on hardware/simulation sign-off |
+| P1-Engine | 3D live preview via three.js | Original plan |
+
+### v0.3
+- JSON report export (`report.json`) — makes CI integration possible.
+- CLI version: `npx urdf-check file.urdf --report json` (core layer is already browser-decoupled).
+- Dark theme (all color tokens already centralized).
+
+### v0.4+ (requires backend)
+- Team-shared rule configuration (remote fetch / import-export).
+- MR / PR bot integration: post report summary as a comment on GitHub Actions runs.
+
+---
+
+## Known Limitations
+
+- `.xacro` (macro-expanded URDF) is not yet supported.
+- File drag-drop is blocked by the browser on `file://` protocol (double-clicked HTML). Use the Select Folder button instead, or serve over HTTP with `npm run preview`.
+- Only a single URDF can be analyzed per run. Batch analysis planned for v0.3.
+- Only a light theme exists today.
+
+---
+
+## License
+
+MIT © LinkerBot / Lingxin Qiaoshou
