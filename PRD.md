@@ -60,6 +60,8 @@ Build a **pure-frontend web tool** that runs 6 automated checks in the browser. 
 | **P1-UI** | 6-item bento grid → **extensible label + dropdown list** layout — supports N check items without re-layout | Product Owner §4 | Future-proofing for new checks |
 | **P1-UI** | Merge regions 2 × 3 into one unified expandable list (eliminates redundancy between bento grid and issue list) | Product Owner §5 | Cleaner UI |
 | **P1-Engine** | Plugin-style check architecture + symmetry check plugin (integrates with existing mirror script) | Product Owner §6 | Zero framework changes for future checks |
+| **P1-UI** | Report export user-flow: button + clear success feedback + document format | Product Owner §7 | User who hasn't experimented is unclear on format — document it prominently |
+| **P1-UI** | Rule Configuration demoted to **advanced expert-only** — hidden by default, unlock via `?expert=1` or top-bar "Advanced" toggle. Named "Expert Rules" | Product Owner §8 | First-time users shouldn't be intimidated by low-level knobs; rules page is product-internal, not user-facing |
 | **P1-Engine** | Enable limit sign rules + axis direction rules (currently `partial` — framework exists, only rules table missing) | Original plan + Product Owner Q1/Q2 | Completes check coverage |
 | **P1-Engine** | 3D live preview via three.js | Original plan | More intuitive visualization |
 
@@ -167,30 +169,86 @@ Build a **pure-frontend web tool** that runs 6 automated checks in the browser. 
 
 ---
 
-### FR-05 · Rule Configuration ✅ Delivered
+### FR-05 · Expert Rule Configuration ✅ Delivered — being demoted to advanced (v0.2)
 
-**Purpose**: support different naming standards per project / per hand type.
+**Purpose** (expert-only, not for general users): support different naming standards per project / per hand type, tune limit sign rules and axis direction rules.
 
-**Trigger**: click **Rules** in the top bar.
+> **Product Owner decision (§8)**: Rule configuration is an **expert/backend-level** feature. A first-time user unfamiliar with URDF should not see low-level knobs on their first visit. v0.2 demotes Rules to an "advanced expert" toggle: hidden by default, enabled only via a top-bar `Advanced` toggle or URL parameter `?expert=1`. Renamed from **Rules** → **Expert Rules** to signal that this is not the place for beginners.
+
+**Trigger** (v0.1): click **Rules** in the top bar.
+
+**Trigger** (v0.2): top-bar `Advanced` toggle ON → **Expert Rules** button appears. Or open `?expert=1` URL directly.
 
 **Rules**:
 - Dialog to edit naming convention entries, enable/disable limit sign rules, enable/disable axis direction rules.
 - Changes persist to `localStorage` — auto-loaded on next open.
 - Rule changes **do not auto-trigger re-analysis** (prevents accidental overwrite). User must manually re-trigger.
 - limit and axis rules default to **disabled** → those checks report `partial`.
+- When advanced mode is OFF and rules are present in `localStorage`, the app still uses them — they just aren't editable from the UI. This way an expert can configure once, then share the link with a beginner who never needs to see the dialog.
 
 ---
 
 ### FR-06 · Markdown Report Export ✅ Delivered
 
-**Purpose**: shareable, archiveable results.
+**Purpose**: shareable, archiveable results — attach to MR, Jira, Slack, or email.
+
+> **Product Owner decision (§7)**: the report format was not widely understood. v0.2 adds explicit success feedback ("Report downloaded → open `urdf-check-report.md` in your editor") and documents the format prominently.
 
 **Trigger**: click **Export Report** in the top bar.
 
 **Rules**:
-- Generates `report.md` containing: one-sentence verdict, link/joint/mesh counts, one section per check, issue list grouped by severity.
+- Generates `urdf-check-report.md`. The **real format below** (from running against the demo dataset).
 - Line numbers come from the current analysis snapshot — re-check is not triggered.
 - Download uses the browser's default download behavior, no server involved.
+
+**Report Format (v0.1, verified by running against demo dataset)**:
+
+```
+# URDF 检查报告
+
+- 生成时间：2026/11/2 20:07:26
+- 来源：示例 demo_hand（30 个文件，3 个 URDF）
+
+## 总览
+
+| 文件 | 1 格式完整性 | 2 parent/child | 3 命名规范 | 4 limit | 5 axis | 6 mesh | 错误 | 警告 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| demo_hand/urdf/hand_1_buggy.urdf | 错误 | 错误 | 错误 | 错误 | 错误 | 错误 | 17 | 10 |
+| demo_hand/urdf/hand_2_clean.urdf | 通过 | 通过 | 通过 | 待配置 | 待配置 | 通过 | 0 | 0 |
+| demo_hand/urdf/hand_3_broken_xml.urdf | 错误 | 跳过 | 跳过 | 跳过 | 跳过 | 跳过 | 1 | 0 |
+
+## demo_hand/urdf/hand_1_buggy.urdf
+
+robot：demo_hand_buggy；27 个 link、25 个 joint；根 link：wrist_base_link
+
+### 1. 格式完整性　[错误]
+
+发现 2 个问题
+
+- **错误**（第 341 行 · link index_proximal）：link 名重复 → 同一类的名字必须唯一
+- **错误**（第 457 行 · joint middle_pip）：joint type "revolut" 不合法 → 是不是想写 "revolute"？
+
+### 2. parent / child　[错误]
+
+发现 3 个问题
+
+- **错误**（第 487 行 · joint ring_pip）：parent link "ring_proxmal" 不存在 → 是不是想写 "ring_proximal"？
+- ...（每个问题一条，含行号、目标、消息、修复提示）
+
+### 6. mesh 文件　[错误]
+
+引用了 54 处 mesh，2 处找不到
+
+- **错误**（第 176 行 · link index_distal · visual）：找不到 "package://.../index_distl.stl" → 是不是想写 "index_distal.stl"？
+- ...
+```
+
+**Key format notes** (documented so no one has to guess):
+- Report is one file, named `urdf-check-report.md`. If multiple URDFs were in the folder, **one overview table at the top + one section per file**, each with all 6 checks fully expanded.
+- Each issue has: severity badge (`错误` / `警告` / `提示`), source location (line number + target), message, and a **fix hint** in the `→` arrow.
+- Checks that are `skipped` (because XML parse failed) still show their section — they list the reason ("XML 无法解析，先修好检查 1").
+- Checks that are `partial` (rules not configured) still list what they **did** check and explicitly say what's missing.
+- Opening the `.md` in GitHub, VS Code, Obsidian, or any Markdown viewer renders the table and headings natively. Copy-paste into a Slack or MR comment preserves all structure.
 
 ---
 
