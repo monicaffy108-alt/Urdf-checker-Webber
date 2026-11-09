@@ -41,6 +41,8 @@ Checks run in order — if #1 fails, #2–6 auto-skip with a clear reason. Any c
 
 ## Features
 
+![URDF Checker — results view with verdict, hand map, and issues](./assets/demo-results.png)
+
 - **Zero backend, zero upload** — all parsing, analysis, and rendering happens in your browser with `saxes`. Your URDF and meshes never leave your machine.
 - **Single-file deliverable** — `npm run build` bundles everything (fonts, icons, CSS, JS) into one `dist/index.html`. Share it on WeChat, Slack, or email. Double-click to open.
 - **Visual hand map** — your dexterous hand drawn from link positions. Green = ok, yellow = warning, red = error, dashed red circle = missing node. Hover for a tooltip, click to filter.
